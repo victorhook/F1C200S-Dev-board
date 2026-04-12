@@ -1,0 +1,194 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+// Device tree for F1C200S Dev Board Rev A
+// Linux kernel version (include path relative to arch/arm/boot/dts/)
+
+/dts-v1/;
+#include "allwinner/suniv-f1c100s.dtsi"
+#include <dt-bindings/clock/suniv-ccu-f1c100s.h>
+#include <dt-bindings/reset/suniv-ccu-f1c100s.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+
+/ {
+	model = "F1C200S Dev Board";
+	compatible = "custom,f1c200s-devboard",
+		     "allwinner,suniv-f1c200s",
+		     "allwinner,suniv-f1c100s";
+
+	aliases {
+		serial0 = &uart0;
+		serial1 = &uart1;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 0x04000000>; /* 64 MB */
+	};
+
+	reg_vcc3v3: reg-vcc3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led1 {
+			label = "devboard:led1";
+			gpios = <&pio 3 12 GPIO_ACTIVE_HIGH>; /* PD12 */
+			linux,default-trigger = "heartbeat";
+		};
+
+		led2 {
+			label = "devboard:led2";
+			gpios = <&pio 2 3 GPIO_ACTIVE_HIGH>; /* PC3 */
+		};
+
+		led3 {
+			label = "devboard:led3";
+			gpios = <&pio 3 0 GPIO_ACTIVE_HIGH>; /* PD0 */
+		};
+
+		led4 {
+			label = "devboard:led4";
+			gpios = <&pio 3 11 GPIO_ACTIVE_HIGH>; /* PD11 */
+			linux,default-trigger = "mmc0";
+		};
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		button-user {
+			label = "User Button";
+			linux,code = <KEY_ENTER>;
+			gpios = <&pio 3 9 GPIO_ACTIVE_LOW>; /* PD9 */
+		};
+	};
+
+	/*
+	 * TVOUT - Composite video output on TVOUT pin (pin 72)
+	 * The display pipeline nodes (fe0, be0, tcon0) are not yet in
+	 * mainline suniv-f1c100s.dtsi. Once upstreamed, enable with:
+	 *   &fe0   { status = "okay"; };
+	 *   &be0   { status = "okay"; };
+	 *   &tcon0 { status = "okay"; };
+	 *
+	 * TVIN - Composite video input on TVIN0/TVIN1 pins (pins 78/77)
+	 * Requires V4L2 driver for suniv TV decoder (not in mainline).
+	 */
+};
+
+/* Nodes not in mainline suniv dtsi yet - define inline */
+&{/soc} {
+	/* Built-in 4-wire resistive touchscreen controller
+	 * Directly wired to TPX1/TPX2/TPY1/TPY2 pins (dedicated analog).
+	 */
+	tp: touchscreen@1c24800 {
+		compatible = "allwinner,sun4i-a10-ts";
+		reg = <0x01c24800 0x100>;
+		interrupts = <20>;
+		status = "okay";
+	};
+
+	uart1: serial@1c25400 {
+		compatible = "snps,dw-apb-uart";
+		reg = <0x01c25400 0x400>;
+		interrupts = <2>;
+		reg-shift = <2>;
+		reg-io-width = <4>;
+		clocks = <&ccu CLK_BUS_UART1>;
+		resets = <&ccu RST_BUS_UART1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uart1_pd_pins>;
+		status = "okay";
+	};
+};
+
+&pio {
+	uart1_pd_pins: uart1-pd-pins {
+		pins = "PD3", "PD4";
+		function = "uart1";
+	};
+
+	spi0_pd_pins: spi0-pd-pins {
+		pins = "PD18", "PD19", "PD20", "PD21";
+		function = "spi0";
+	};
+
+	ir_rx_pins: ir-rx-pins {
+		pins = "PE3";
+		function = "ir0";
+	};
+};
+
+/* UART0 on PE0/PE1 - camera connector J4 (primary console) */
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_pe_pins>;
+	status = "okay";
+};
+
+/* SD card on SDC0 (PF0-PF5) - boot device */
+&mmc0 {
+	vmmc-supply = <&reg_vcc3v3>;
+	bus-width = <4>;
+	broken-cd;
+	status = "okay";
+};
+
+&usb_otg {
+	dr_mode = "otg";
+	status = "okay";
+};
+
+&usbphy {
+	status = "okay";
+};
+
+/* SPI0 on PD18-PD21 (mux 4) - wired to display header */
+&spi0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi0_pd_pins>;
+	status = "okay";
+
+	/* ST7735R TFT display
+	 * SPI: CS=PD18, MOSI=PD19, CLK=PD20, MISO=PD21
+	 * DC and reset on PD7/PD8 - adjust to match your wiring.
+	 */
+	display@0 {
+		compatible = "jianda,jd-t18003-t01";
+		reg = <0>;
+		spi-max-frequency = <32000000>;
+		dc-gpios = <&pio 3 7 GPIO_ACTIVE_HIGH>;    /* PD7 */
+		reset-gpios = <&pio 3 8 GPIO_ACTIVE_LOW>;   /* PD8 */
+		rotation = <0>;
+	};
+
+	/* XPT2046 SPI touch controller (if present on your display module)
+	 * Uncomment and wire T_CS to a GPIO, T_IRQ to a GPIO.
+	 *
+	 * touch@1 {
+	 *     compatible = "ti,ads7846";
+	 *     reg = <1>;
+	 *     spi-max-frequency = <2000000>;
+	 *     interrupts-extended = <&pio 3 10 IRQ_TYPE_EDGE_FALLING>;
+	 *     pendown-gpio = <&pio 3 10 GPIO_ACTIVE_LOW>;
+	 *     ti,x-plate-ohms = /bits/ 16 <60>;
+	 *     ti,pressure-max = /bits/ 16 <255>;
+	 * };
+	 */
+};
+
+/* IR receiver on PE3 (directly accessible on header) */
+/*
+ * NOTE: The suniv IR controller node may not be in the mainline dtsi.
+ * If missing, it can be defined similarly to uart1 above at address
+ * 0x01c22c00. The IR_RX pin is routed to the board headers.
+ */

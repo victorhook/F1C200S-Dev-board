@@ -1,0 +1,11 @@
+CONFIG_DEFAULT_DEVICE_TREE="suniv-f1c200s-devboard"
+# No SPI flash on this board - disable entire SPI flash subsystem
+# CONFIG_SPL_SPI_SUNXI is not set
+# CONFIG_SPI is not set
+# CONFIG_DM_SPI is not set
+# CONFIG_SPI_FLASH is not set
+# CONFIG_DM_SPI_FLASH is not set
+# CONFIG_SPI_FLASH_WINBOND is not set
+# CONFIG_SPI_MEM is not set
+# CONFIG_CMD_SF is not set
+# CONFIG_CMD_SPI is not set

@@ -1,0 +1,34 @@
+#!/bin/sh
+
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mkdir -p /dev/pts /dev/shm
+mount -t devpts devpts /dev/pts
+mount -t tmpfs tmpfs /tmp
+mount -t tmpfs tmpfs /run
+
+hostname f1c200s
+
+# USB Ethernet gadget - board shows up as a USB network adapter on host PC
+modprobe g_ether 2>/dev/null
+sleep 1
+ifconfig usb0 192.168.100.1 netmask 255.255.255.0 up 2>/dev/null
+
+# WiFi - auto-connect if configured
+if [ -f /etc/wpa_supplicant.conf ]; then
+	wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant.conf 2>/dev/null
+	udhcpc -b -i wlan0 -q 2>/dev/null &
+fi
+
+echo ""
+echo "  F1C200S Dev Board"
+echo "  64MB RAM | ARM926EJ-S | kernel $(uname -r)"
+echo ""
+echo "  Serial console: ttyS0 @ 115200"
+echo "  USB Ethernet:   192.168.100.1 (set host to 192.168.100.2)"
+if [ -f /etc/wpa_supplicant.conf ]; then
+echo "  WiFi:           connecting..."
+fi
+echo "  SSH:            ssh root@<ip>  (password: root)"
+echo ""

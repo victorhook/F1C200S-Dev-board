@@ -1,0 +1,14 @@
+# Ignore everything
+*
+
+# Keep KiCad design files
+!.gitignore
+!*.kicad_pcb
+!*.kicad_pro
+!*.kicad_sch
+!*.pdf
+!production/
+!production/**
+*backups/
+*.lck
+*_prl

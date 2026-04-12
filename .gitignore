@@ -1,0 +1,5 @@
+# Buildroot (cloned and built by Makefile)
+buildroot/
+
+# Datasheets (third-party, not ours to distribute)
+resources/datasheets/*

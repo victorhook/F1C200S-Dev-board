@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+// Device tree for F1C200S Dev Board Rev A
+// U-Boot version (include path relative to arch/arm/dts/)
+
+/dts-v1/;
+#include "suniv-f1c100s.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	model = "F1C200S Dev Board";
+	compatible = "custom,f1c200s-devboard",
+		     "allwinner,suniv-f1c200s",
+		     "allwinner,suniv-f1c100s";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	reg_vcc3v3: reg-vcc3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 0x04000000>; /* 64 MB */
+	};
+};
+
+/* UART0 on PE0/PE1 - camera connector J4 */
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_pe_pins>;
+	status = "okay";
+};
+
+/* SD card on SDC0 (PF0-PF5) */
+&mmc0 {
+	bus-width = <4>;
+	broken-cd;
+	status = "okay";
+};
+
+&usb_otg {
+	dr_mode = "otg";
+	status = "okay";
+};
+
+&usbphy {
+	status = "okay";
+};
