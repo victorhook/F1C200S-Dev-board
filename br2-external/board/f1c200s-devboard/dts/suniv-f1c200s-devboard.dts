@@ -16,6 +16,7 @@
 		     "allwinner,suniv-f1c100s";
 
 	aliases {
+		mmc0 = &mmc0;
 		serial0 = &uart0;
 		serial1 = &uart1;
 	};
@@ -64,11 +65,19 @@
 
 	gpio-keys {
 		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&button1_pd9_pin>, <&button2_pd10_pin>;
 
-		button-user {
-			label = "User Button";
+		button-1 {
+			label = "User Button 1";
 			linux,code = <KEY_ENTER>;
 			gpios = <&pio 3 9 GPIO_ACTIVE_LOW>; /* PD9 */
+		};
+
+		button-2 {
+			label = "User Button 2";
+			linux,code = <KEY_ESC>;
+			gpios = <&pio 3 10 GPIO_ACTIVE_LOW>; /* PD10 */
 		};
 	};
 
@@ -87,16 +96,6 @@
 
 /* Nodes not in mainline suniv dtsi yet - define inline */
 &{/soc} {
-	/* Built-in 4-wire resistive touchscreen controller
-	 * Directly wired to TPX1/TPX2/TPY1/TPY2 pins (dedicated analog).
-	 */
-	tp: touchscreen@1c24800 {
-		compatible = "allwinner,sun4i-a10-ts";
-		reg = <0x01c24800 0x100>;
-		interrupts = <20>;
-		status = "okay";
-	};
-
 	uart1: serial@1c25400 {
 		compatible = "snps,dw-apb-uart";
 		reg = <0x01c25400 0x400>;
@@ -126,6 +125,18 @@
 		pins = "PE3";
 		function = "ir0";
 	};
+
+	button1_pd9_pin: button1-pd9-pin {
+		pins = "PD9";
+		function = "gpio_in";
+		bias-pull-up;
+	};
+
+	button2_pd10_pin: button2-pd10-pin {
+		pins = "PD10";
+		function = "gpio_in";
+		bias-pull-up;
+	};
 };
 
 /* UART0 on PE0/PE1 - camera connector J4 (primary console) */
@@ -138,8 +149,20 @@
 /* SD card on SDC0 (PF0-PF5) - boot device */
 &mmc0 {
 	vmmc-supply = <&reg_vcc3v3>;
-	bus-width = <4>;
+	/*
+	 * Conservative timing for bring-up/debug: if high-speed or 4-bit
+	 * transfers are marginal on this board, ext4 metadata reads can fail.
+	 * Raise these back after boot is stable.
+	 */
+	bus-width = <1>;
+	max-frequency = <12000000>;
+	no-1-8-v;
 	broken-cd;
+	disable-wp;
+	status = "okay";
+};
+
+&otg_sram {
 	status = "okay";
 };
 
@@ -169,21 +192,8 @@
 		dc-gpios = <&pio 3 7 GPIO_ACTIVE_HIGH>;    /* PD7 */
 		reset-gpios = <&pio 3 8 GPIO_ACTIVE_LOW>;   /* PD8 */
 		rotation = <0>;
+		status = "disabled";
 	};
-
-	/* XPT2046 SPI touch controller (if present on your display module)
-	 * Uncomment and wire T_CS to a GPIO, T_IRQ to a GPIO.
-	 *
-	 * touch@1 {
-	 *     compatible = "ti,ads7846";
-	 *     reg = <1>;
-	 *     spi-max-frequency = <2000000>;
-	 *     interrupts-extended = <&pio 3 10 IRQ_TYPE_EDGE_FALLING>;
-	 *     pendown-gpio = <&pio 3 10 GPIO_ACTIVE_LOW>;
-	 *     ti,x-plate-ohms = /bits/ 16 <60>;
-	 *     ti,pressure-max = /bits/ 16 <255>;
-	 * };
-	 */
 };
 
 /* IR receiver on PE3 (directly accessible on header) */

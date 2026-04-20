@@ -1,5 +1,23 @@
 # Buildroot (cloned and built by Makefile)
 buildroot/
 
+# Cross-compiled userspace binaries (src/Makefile output)
+build/
+
 # Datasheets (third-party, not ours to distribute)
 resources/datasheets/*
+
+# Serial-console capture files from minicom/tio
+*.log
+*.cap
+
+# Kernel module build artifacts (src/drivers/*/)
+*.ko
+*.o
+*.mod
+*.mod.c
+*.mod.o
+modules.order
+Module.symvers
+.*.cmd
+*.cmd
