@@ -56,6 +56,8 @@ Output: `buildroot/output/images/sdcard.img`
 
 Rev A -- initial prototype
 
+![Rev A Bringup](resources/rev-a-bringup.jpg)
+
 **2026-04-20**: First Linux boot! Rev A boards arrived and reached a busybox root shell
 on UART0. The core path (USB-C power, DDR1, 24MHz PLL, MMC, pinctrl, UART, GPIO LEDs,
 SPI) is all verified working under Linux 6.19.11. Later the same day, USB composite
