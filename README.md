@@ -58,6 +58,10 @@ Rev A -- initial prototype
 
 **2026-04-20**: First Linux boot! Rev A boards arrived and reached a busybox root shell
 on UART0. The core path (USB-C power, DDR1, 24MHz PLL, MMC, pinctrl, UART, GPIO LEDs,
-SPI) is all verified working under Linux 6.19.11.
+SPI) is all verified working under Linux 6.19.11. Later the same day, USB composite
+gadget (CDC ECM ethernet + CDC ACM serial) came up — one USB-C cable now carries
+power, a shell on `/dev/ttyACM0`, and a network link on `usb0` (192.168.100.1).
+Buttons work via the input subsystem (`/dev/input/event0`) after a kernel patch
+that aligns suniv's pinctrl strict-mode behaviour with other sunxi SoCs.
 
 ![Rev A](resources/PCB_rev-a_Preview.png)

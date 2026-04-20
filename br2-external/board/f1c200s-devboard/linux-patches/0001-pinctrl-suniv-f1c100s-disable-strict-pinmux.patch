@@ -1,0 +1,34 @@
+From: Victor <victor.krook@everdrone.com>
+Subject: [PATCH] pinctrl: sunxi: suniv-f1c100s: disable strict pinmux mode
+
+All other sunxi pinctrl drivers (sun4i-a10, sun8i-a33, sun50i-a64, etc.)
+set .disable_strict_mode = true, which allows the standard "pinctrl state
+applies default config, then the consumer driver requests the GPIO"
+pattern used by gpio-keys, gpio-leds, and friends.
+
+Without it, suniv's pinmux core rejects the GPIO claim because the pin
+was just claimed by the pinctrl state's mux function ("gpio_in"),
+producing errors like:
+
+    suniv-f1c100s-pinctrl 1c20800.pinctrl: pin PD9 already requested
+        by gpio-keys; cannot claim for 1c20800.pinctrl:105
+    gpio-keys: probe with driver gpio-keys failed with error -22
+
+Align suniv with the rest of the sunxi family.
+
+Signed-off-by: Victor <victor.krook@everdrone.com>
+---
+ drivers/pinctrl/sunxi/pinctrl-suniv-f1c100s.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/pinctrl/sunxi/pinctrl-suniv-f1c100s.c b/drivers/pinctrl/sunxi/pinctrl-suniv-f1c100s.c
+--- a/drivers/pinctrl/sunxi/pinctrl-suniv-f1c100s.c
++++ b/drivers/pinctrl/sunxi/pinctrl-suniv-f1c100s.c
+@@ -391,6 +391,7 @@ static const struct sunxi_pinctrl_desc suniv_f1c100s_pinctrl_data = {
+ 	.pins = suniv_f1c100s_pins,
+ 	.npins = ARRAY_SIZE(suniv_f1c100s_pins),
+ 	.irq_banks = 3,
++	.disable_strict_mode = true,
+ };
+
+ static int suniv_pinctrl_probe(struct platform_device *pdev)

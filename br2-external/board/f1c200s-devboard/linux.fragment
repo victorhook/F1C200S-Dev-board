@@ -32,12 +32,20 @@ CONFIG_INPUT_EVDEV=y
 # MMC / SD card
 CONFIG_MMC_SUNXI=y
 
-# USB OTG + gadget ethernet
+# USB OTG + composite gadget (CDC ECM ethernet + CDC ACM serial)
+# MUSB_SUNXI needs these: EXTCON, NOP_USB_XCEIV, PHY_SUN4I_USB, SUNXI_SRAM
+CONFIG_NOP_USB_XCEIV=y
+CONFIG_PHY_SUN4I_USB=y
+CONFIG_USB_MUSB_HDRC=y
+CONFIG_USB_MUSB_GADGET=y
 CONFIG_USB_MUSB_SUNXI=y
 CONFIG_USB_GADGET=y
-CONFIG_USB_ETH=m
-CONFIG_USB_CONFIGFS=m
+CONFIG_CONFIGFS_FS=y
+CONFIG_USB_CONFIGFS=y
 CONFIG_USB_CONFIGFS_ECM=y
+CONFIG_USB_CONFIGFS_ACM=y
+# Drop legacy single-function gadget — configfs composes functions at runtime
+# CONFIG_USB_ETH is not set
 
 # SPI - for TFT displays on SPI0 headers
 CONFIG_SPI=y

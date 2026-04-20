@@ -9,6 +9,7 @@ resources/datasheets/*
 
 # Serial-console capture files from minicom/tio
 *.log
+*.log_old
 *.cap
 
 # Kernel module build artifacts (src/drivers/*/)
