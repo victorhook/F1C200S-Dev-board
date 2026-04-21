@@ -111,6 +111,11 @@
 };
 
 &pio {
+	vcc-pc-supply = <&reg_vcc3v3>;
+	vcc-pd-supply = <&reg_vcc3v3>;
+	vcc-pe-supply = <&reg_vcc3v3>;
+	vcc-pf-supply = <&reg_vcc3v3>;
+
 	uart1_pd_pins: uart1-pd-pins {
 		pins = "PD3", "PD4";
 		function = "uart1";
@@ -149,16 +154,10 @@
 /* SD card on SDC0 (PF0-PF5) - boot device */
 &mmc0 {
 	vmmc-supply = <&reg_vcc3v3>;
-	/*
-	 * Conservative timing for bring-up/debug: if high-speed or 4-bit
-	 * transfers are marginal on this board, ext4 metadata reads can fail.
-	 * Raise these back after boot is stable.
-	 */
-	bus-width = <1>;
-	max-frequency = <12000000>;
-	no-1-8-v;
-	broken-cd;
-	disable-wp;
+	bus-width = <4>;
+	no-1-8-v;     /* SD card at 3.3V only; we don't support UHS-I signaling */
+	broken-cd;    /* no card-detect pin wired */
+	disable-wp;   /* no write-protect pin wired */
 	status = "okay";
 };
 

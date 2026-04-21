@@ -11,14 +11,10 @@ CONFIG_MACH_SUNIV=y
 # Core
 CONFIG_DEVTMPFS=y
 CONFIG_DEVTMPFS_MOUNT=y
-CONFIG_DEBUG_KERNEL=y
 
-# Early boot visibility on SUNIV UART0
+# earlycon= bootarg support (lightweight; lets early kernel messages appear
+# via the 8250 DW UART before the full serial driver attaches).
 CONFIG_SERIAL_EARLYCON=y
-CONFIG_DEBUG_LL=y
-CONFIG_DEBUG_SUNXI_UART0=y
-CONFIG_DEBUG_UNCOMPRESS=y
-CONFIG_EARLY_PRINTK=y
 
 # GPIO LEDs + triggers
 CONFIG_LEDS_GPIO=y
