@@ -48,21 +48,33 @@ CONFIG_SPI=y
 CONFIG_SPI_SUN6I=y
 
 # Display - DRM + SPI panel drivers
+# ST7735R built in (=y, not =m) so /dev/fb0 appears at boot on busybox+mdev
+# without a separate modprobe step.
 CONFIG_DRM=y
 CONFIG_DRM_SUN4I=y
 CONFIG_DRM_TINY=y
 CONFIG_DRM_PANEL_MIPI_DBI_COMPATIBLE=m
-CONFIG_DRM_ST7735R=m
+CONFIG_DRM_ST7735R=y
 CONFIG_BACKLIGHT_CLASS_DEVICE=y
 CONFIG_BACKLIGHT_GPIO=y
 CONFIG_FB=y
 CONFIG_FRAMEBUFFER_CONSOLE=y
 
-# Camera - CSI parallel interface
+# Camera - CSI parallel interface + OV2640 sensor
+# sun4i-csi needs a patch to add the suniv compatible (see linux-patches/).
+# Built-in (=y) so /dev/video0 shows up at boot without modprobe gymnastics.
 CONFIG_MEDIA_SUPPORT=y
 CONFIG_MEDIA_PLATFORM_DRIVERS=y
+CONFIG_MEDIA_CAMERA_SUPPORT=y
 CONFIG_V4L_PLATFORM_DRIVERS=y
-CONFIG_VIDEO_SUN4I_CSI=m
+CONFIG_VIDEO_DEV=y
+CONFIG_VIDEO_V4L2_SUBDEV_API=y
+CONFIG_VIDEO_SUN4I_CSI=y
+CONFIG_VIDEO_OV2640=y
+
+# I2C for OV2640 SCCB control (on i2c1 = PD5/PD6 per schematic)
+CONFIG_I2C=y
+CONFIG_I2C_MV64XXX=y
 
 # IR receiver
 CONFIG_RC_CORE=y

@@ -92,6 +92,17 @@
 	 * TVIN - Composite video input on TVIN0/TVIN1 pins (pins 78/77)
 	 * Requires V4L2 driver for suniv TV decoder (not in mainline).
 	 */
+
+	/* Dummy 24 MHz clock handed to the OV2640 driver as "xvclk".
+	 * The camera module has its own onboard crystal; the driver
+	 * just needs a clk phandle it can call clk_prepare_enable() on.
+	 * fixed-clock makes that a no-op.
+	 */
+	ov2640_xvclk: ov2640-xvclk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
 };
 
 /* Nodes not in mainline suniv dtsi yet - define inline */
@@ -107,6 +118,42 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart1_pd_pins>;
 		status = "okay";
+	};
+
+	/* CSI (parallel camera interface).
+	 *
+	 * Requires the sun4i-csi suniv compatible patch under linux-patches/.
+	 *
+	 * Pin conflict with UART0 console: PE0/PE1 carry CSI HSYNC/VSYNC
+	 * but are also the UART0 TX/RX console pins. When you enable CSI
+	 * (status = "okay" below), either:
+	 *   a) set status = "disabled" on &uart0, and switch the console
+	 *      to /dev/ttyGS0 (USB gadget, already set up in rcS), OR
+	 *   b) accept that the serial console goes silent while camera runs.
+	 *
+	 * IRQ 24 is best-guess for CSI on suniv; verify against the F1C100S
+	 * datasheet interrupt table before trusting it in production.
+	 */
+	csi0: csi@1cb0000 {
+		compatible = "allwinner,suniv-f1c100s-csi";
+		reg = <0x01cb0000 0x1000>;
+		interrupts = <32>;
+		clocks = <&ccu CLK_BUS_CSI>, <&ccu CLK_DRAM_CSI>;
+		clock-names = "bus", "ram";
+		resets = <&ccu RST_BUS_CSI>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&csi_pe_pins>;
+		status = "okay";
+
+		port {
+			csi_in: endpoint {
+				remote-endpoint = <&ov2640_out>;
+				bus-width = <8>;
+				hsync-active = <1>;
+				vsync-active = <1>;
+				pclk-sample = <1>;
+			};
+		};
 	};
 };
 
@@ -127,8 +174,8 @@
 	};
 
 	ir_rx_pins: ir-rx-pins {
-		pins = "PE3";
-		function = "ir0";
+		pins = "PE11";
+		function = "ir";
 	};
 
 	button1_pd9_pin: button1-pd9-pin {
@@ -142,13 +189,29 @@
 		function = "gpio_in";
 		bias-pull-up;
 	};
+
+	/* CSI DVP: PE0=HSYNC, PE1=VSYNC, PE2=PCLK, PE3-PE10=D0-D7 */
+	csi_pe_pins: csi-pe-pins {
+		pins = "PE0", "PE1", "PE2", "PE3", "PE4",
+		       "PE5", "PE6", "PE7", "PE8", "PE9", "PE10";
+		function = "csi";
+	};
+
+	/* SCCB for OV2640 sensor (I2C1 on PD5/PD6 per board schematic) */
+	i2c1_pd_pins: i2c1-pd-pins {
+		pins = "PD5", "PD6";
+		function = "i2c1";
+	};
 };
 
-/* UART0 on PE0/PE1 - camera connector J4 (primary console) */
+/* UART0 on PE0/PE1 — shares pins with CSI HSYNC/VSYNC.
+ * When activating the camera stack, flip this to "disabled" and enable
+ * &csi0 + &i2c1 — console moves to /dev/ttyGS0 over USB gadget.
+ */
 &uart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart0_pe_pins>;
-	status = "okay";
+	status = "disabled";
 };
 
 /* SD card on SDC0 (PF0-PF5) - boot device */
@@ -183,6 +246,7 @@
 	/* ST7735R TFT display
 	 * SPI: CS=PD18, MOSI=PD19, CLK=PD20, MISO=PD21
 	 * DC and reset on PD7/PD8 - adjust to match your wiring.
+	 * If you see garbled pixels, try dropping spi-max-frequency to 16 MHz.
 	 */
 	display@0 {
 		compatible = "jianda,jd-t18003-t01";
@@ -205,3 +269,35 @@
  * If missing, it can be defined similarly to uart1 above at address
  * 0x01c22c00. The IR_RX pin is routed to the board headers.
  */
+
+/* I2C1 = SCCB bus for OV2640. Enabled alongside &csi0 for camera use. */
+&i2c1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c1_pd_pins>;
+	clock-frequency = <100000>;
+	status = "okay";
+
+	ov2640: camera@30 {
+		compatible = "ovti,ov2640";
+		reg = <0x30>;
+		clocks = <&ov2640_xvclk>;
+		clock-names = "xvclk";
+		/* Net mapping confirmed from schematic:
+		 *   CAM_RESET → PD17  (SoC pin 25, active-low)
+		 *   CAM_PWDN  → PC1   (active-high, still to be double-checked)
+		 * Previous PC2 was actually the FEL net — wrong pin.
+		 */
+		resetb-gpios = <&pio 3 17 GPIO_ACTIVE_LOW>;
+		pwdn-gpios = <&pio 2 1 GPIO_ACTIVE_HIGH>;
+
+		port {
+			ov2640_out: endpoint {
+				remote-endpoint = <&csi_in>;
+				bus-width = <8>;
+				hsync-active = <1>;
+				vsync-active = <1>;
+				pclk-sample = <1>;
+			};
+		};
+	};
+};

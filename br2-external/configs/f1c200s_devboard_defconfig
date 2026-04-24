@@ -52,6 +52,17 @@ BR2_PACKAGE_WPA_SUPPLICANT_AUTOSCAN=y
 BR2_PACKAGE_LINUX_FIRMWARE=y
 BR2_PACKAGE_LINUX_FIRMWARE_RTL_81XX=y
 
+BR2_PACKAGE_RSYNC=y
+BR2_PACKAGE_HTOP=y            # process viewer
+BR2_PACKAGE_TREE=y            # directory tree
+BR2_PACKAGE_FILE=y            # `file` command
+BR2_PACKAGE_YAVTA=y           # V4L2 raw frame dump (camera bring-up)
+BR2_PACKAGE_I2C_TOOLS=y       # i2cdetect / i2cget / i2cset (sensor debug)
+BR2_INSTALL_LIBSTDCPP=y       # C++ stdlib (required by libv4l_utils)
+BR2_PACKAGE_LIBV4L=y          # V4L2 abstraction library
+BR2_PACKAGE_LIBV4L_UTILS=y    # media-ctl, v4l2-ctl, v4l2-compliance
+
+
 # Root filesystem
 BR2_TARGET_ROOTFS_EXT2=y
 BR2_TARGET_ROOTFS_EXT2_4=y

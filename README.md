@@ -44,13 +44,37 @@ The `br2-external/` tree has everything needed to build a bootable SD card image
 - **Rootfs**: musl + BusyBox, Dropbear SSH, wpa_supplicant
 - **Flashing**: `sunxi-fel` over USB
 
-```
+```sh
 make            # clone buildroot + build everything
-make image      # rebuild kernel/uboot/image after DTS or overlay changes
+make kernel     # safe kernel rebuild after DTS / linux patch / fragment changes
+make uboot      # safe U-Boot rebuild after U-Boot DTS / patch / config changes
 make menuconfig # tweak buildroot config
 ```
 
 Output: `buildroot/output/images/sdcard.img`
+
+## Common workflows
+
+Use these as the default rules of thumb:
+
+| If you changed... | Rebuild with... | Deploy with... |
+| --- | --- | --- |
+| `src/**` userspace tools/apps | `make deploy-apps` | included in `make deploy-apps` |
+| `br2-external/board/f1c200s-devboard/dts/**` | `make kernel` | `make deploy-kernel` |
+| `br2-external/board/f1c200s-devboard/linux-patches/**` | `make kernel` | `make deploy-kernel` |
+| `br2-external/board/f1c200s-devboard/linux.fragment` | `make kernel` | `make deploy-kernel` |
+| kernel config via `make linux-menuconfig` | `make kernel` | `make deploy-kernel` |
+| `br2-external/board/f1c200s-devboard/u-boot*` or U-Boot DTS/patches | `make uboot` | no network deploy target; reflash boot media |
+| Buildroot defconfig / package selection | `make defconfig && make` | depends on what changed |
+
+Notes:
+
+- `make deploy-kernel` only installs `zImage` and `suniv-f1c200s-devboard.dtb`
+  to the boot partition on the running board.
+- `make deploy-apps` rebuilds and copies the userspace binaries under `src/`
+  plus selected target tools like `yavta`.
+- There is intentionally no `make image` target anymore. It was too fragile for
+  kernel patch stack changes.
 
 ## Status
 

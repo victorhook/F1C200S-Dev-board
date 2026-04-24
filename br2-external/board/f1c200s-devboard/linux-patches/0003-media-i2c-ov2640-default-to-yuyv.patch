@@ -1,0 +1,48 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Victor Krook <victor.krook@everdrone.com>
+Date: Thu, 23 Apr 2026 00:00:00 +0000
+Subject: [PATCH] media: i2c: ov2640: default to YUYV and VGA for sun4i-csi
+
+The sun4i-csi driver in this tree defaults its sink pad to YUYV
+640x480, and link validation requires source and sink pad formats to
+match. OV2640 defaults to UYVY and SVGA (800x600), which causes
+pipeline validation to fail at STREAMON with -EPIPE ("Broken pipe").
+
+Switch OV2640 defaults to YUYV8_2X8 and VGA (640x480) so the pipeline
+can start without userspace media-graph format programming.
+
+Signed-off-by: Victor Krook <victor.krook@everdrone.com>
+---
+ drivers/media/i2c/ov2640.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/media/i2c/ov2640.c b/drivers/media/i2c/ov2640.c
+--- a/drivers/media/i2c/ov2640.c
++++ b/drivers/media/i2c/ov2640.c
+@@ -1002,11 +1002,11 @@ static int ov2640_init_state(struct v4l2_subdev *sd,
+ 	struct v4l2_mbus_framefmt *try_fmt =
+ 		v4l2_subdev_state_get_format(sd_state, 0);
+ 	const struct ov2640_win_size *win =
+-		ov2640_select_win(SVGA_WIDTH, SVGA_HEIGHT);
++		ov2640_select_win(VGA_WIDTH, VGA_HEIGHT);
+ 
+ 	try_fmt->width = win->width;
+ 	try_fmt->height = win->height;
+-	try_fmt->code = MEDIA_BUS_FMT_UYVY8_2X8;
++	try_fmt->code = MEDIA_BUS_FMT_YUYV8_2X8;
+ 	try_fmt->colorspace = V4L2_COLORSPACE_SRGB;
+ 	try_fmt->field = V4L2_FIELD_NONE;
+ 	try_fmt->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
+@@ -1210,8 +1210,8 @@ static int ov2640_probe(struct i2c_client *client)
+ 	if (ret)
+ 		return ret;
+ 
+-	priv->win = ov2640_select_win(SVGA_WIDTH, SVGA_HEIGHT);
+-	priv->cfmt_code = MEDIA_BUS_FMT_UYVY8_2X8;
++	priv->win = ov2640_select_win(VGA_WIDTH, VGA_HEIGHT);
++	priv->cfmt_code = MEDIA_BUS_FMT_YUYV8_2X8;
+ 
+ 	v4l2_i2c_subdev_init(&priv->subdev, client, &ov2640_subdev_ops);
+ 	priv->subdev.internal_ops = &ov2640_internal_ops;
+--
+2.43.0

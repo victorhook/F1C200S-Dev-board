@@ -1,0 +1,37 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Victor Krook <victor.krook@everdrone.com>
+Date: Wed, 22 Apr 2026 00:00:00 +0000
+Subject: [PATCH] media: sun4i-csi: add suniv-f1c100s compatible
+
+The Allwinner suniv (F1C100S / F1C200S) CSI block is a single-channel
+parallel DVP interface with no onboard ISP — functionally equivalent
+to sun4i-a10-csi1. Add a new compatible string and traits struct so
+the driver probes on suniv boards.
+
+Signed-off-by: Victor Krook <victor.krook@everdrone.com>
+---
+ drivers/media/platform/sunxi/sun4i-csi/sun4i_csi.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/media/platform/sunxi/sun4i-csi/sun4i_csi.c b/drivers/media/platform/sunxi/sun4i-csi/sun4i_csi.c
+--- a/drivers/media/platform/sunxi/sun4i-csi/sun4i_csi.c
++++ b/drivers/media/platform/sunxi/sun4i-csi/sun4i_csi.c
+@@ -294,9 +294,16 @@ static const struct sun4i_csi_traits sun7i_a20_csi0_traits = {
+ 	.has_isp = true,
+ };
+
++static const struct sun4i_csi_traits suniv_f1c100s_csi_traits = {
++	.channels = 1,
++	.max_width = 24,
++	.has_isp = false,
++};
++
+ static const struct of_device_id sun4i_csi_of_match[] = {
+ 	{ .compatible = "allwinner,sun4i-a10-csi1", .data = &sun4i_a10_csi1_traits },
+ 	{ .compatible = "allwinner,sun7i-a20-csi0", .data = &sun7i_a20_csi0_traits },
++	{ .compatible = "allwinner,suniv-f1c100s-csi", .data = &suniv_f1c100s_csi_traits },
+ 	{ /* Sentinel */ }
+ };
+ MODULE_DEVICE_TABLE(of, sun4i_csi_of_match);
+--
+2.43.0

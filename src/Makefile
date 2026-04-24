@@ -31,9 +31,11 @@ list:
 	@echo "BUILD:  $(BUILD)"
 	@echo "BOARD:  $(BOARD)"
 
-# Copy every built binary to the board over USB ethernet
+# Copy every built binary to the board over USB ethernet.
+# -O forces legacy SCP protocol (dropbear on target doesn't speak SFTP,
+# which OpenSSH 9.0+ clients default to).
 deploy: all
-	scp $(BINS) $(BOARD):/root/
+	scp -O $(BINS) $(BOARD):/root/
 
 # Emulate on host for a quick smoke test, no board needed
 run-%: $(BUILD)/%

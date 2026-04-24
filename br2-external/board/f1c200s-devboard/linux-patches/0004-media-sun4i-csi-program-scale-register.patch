@@ -1,0 +1,59 @@
+From: Victor <victor.krook@everdrone.com>
+Date: Thu, 24 Apr 2026 21:45:00 +0200
+Subject: [PATCH] media: sun4i-csi: program CSI_SCALE_REG on suniv F1C100S
+
+The suniv F1C100S CSI block has a CSI_SCALE_REG at offset 0x0C with
+per-byte/per-line mask bits (HOR_MASK [15:0], VER_MASK [27:24]).  Per
+the F1C200s User Manual rev 1.2 section 6.1.7.4, mask bit = 0 means
+"discard this byte from the data stream"; reset defaults are HOR_MASK
+= 0xFFFF and VER_MASK = 0xF (i.e. 0x0F00FFFF, keep everything).
+
+This register does not exist on A10/A20 where sun4i-csi originated,
+so the driver never programs it.  On suniv, at least on F1C200S, we
+observe the register reading 0x00000000 when streaming, producing a
+capture pattern where only 1 of every 4 bytes per line lands in DRAM
+(exactly HOR_MASK = 0x1111 behaviour).  Write the datasheet default
+explicitly on every stream start, and log the readback so we can see
+whether the register is actually latching in the kernel context.
+
+Signed-off-by: Victor <victor.krook@everdrone.com>
+---
+ drivers/media/platform/sunxi/sun4i-csi/sun4i_csi.h |  5 +++++
+ drivers/media/platform/sunxi/sun4i-csi/sun4i_dma.c | 11 +++++++++++
+ 2 files changed, 16 insertions(+)
+
+diff --git a/drivers/media/platform/sunxi/sun4i-csi/sun4i_csi.h b/drivers/media/platform/sunxi/sun4i-csi/sun4i_csi.h
+--- a/drivers/media/platform/sunxi/sun4i-csi/sun4i_csi.h
++++ b/drivers/media/platform/sunxi/sun4i-csi/sun4i_csi.h
+@@ -27,6 +27,11 @@
+ #define CSI_CFG_HREF_POL(pol)			((pol) << 1)
+ #define CSI_CFG_PCLK_POL(pol)			((pol) << 0)
+
++#define CSI_SCALE_REG			0x0c
++#define CSI_SCALE_VER_MASK(m)			(((m) & 0xf) << 24)
++#define CSI_SCALE_HOR_MASK(m)			((m) & 0xffff)
++#define CSI_SCALE_PASSTHROUGH		(CSI_SCALE_VER_MASK(0xf) | CSI_SCALE_HOR_MASK(0xffff))
++
+ #define CSI_CPT_CTRL_REG		0x08
+ #define CSI_CPT_CTRL_VIDEO_START		BIT(1)
+ #define CSI_CPT_CTRL_IMAGE_START		BIT(0)
+diff --git a/drivers/media/platform/sunxi/sun4i-csi/sun4i_dma.c b/drivers/media/platform/sunxi/sun4i-csi/sun4i_dma.c
+--- a/drivers/media/platform/sunxi/sun4i-csi/sun4i_dma.c
++++ b/drivers/media/platform/sunxi/sun4i-csi/sun4i_dma.c
+@@ -298,6 +298,17 @@ static int sun4i_csi_start_streaming(struct vb2_queue *vq, unsigned int count)
+ 	       csi->regs + CSI_CFG_REG);
+
++	/*
++	 * suniv F1C100S has a per-byte/per-line mask register that A10
++	 * lacks.  The datasheet default is passthrough, but in practice
++	 * we observe it reading 0x00000000 and producing 1:4 byte capture.
++	 * Force the passthrough value and log the readback so we can tell
++	 * whether the register actually latches.
++	 */
++	writel(CSI_SCALE_PASSTHROUGH, csi->regs + CSI_SCALE_REG);
++	dev_info(csi->dev, "CSI_SCALE_REG after write: 0x%08x (wanted 0x%08x)\n",
++		 readl(csi->regs + CSI_SCALE_REG), CSI_SCALE_PASSTHROUGH);
++
+ 	/* Setup buffer length */
+ 	writel(csi->fmt.plane_fmt[0].bytesperline,
+ 	       csi->regs + CSI_BUF_LEN_REG);

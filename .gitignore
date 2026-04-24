@@ -7,6 +7,9 @@ build/
 # Datasheets (third-party, not ours to distribute)
 resources/datasheets/*
 
+# Multi-GB raw logic-analyzer captures — too big for git
+resources/logic-analyzer/
+
 # Serial-console capture files from minicom/tio
 *.log
 *.log_old
@@ -22,3 +25,4 @@ modules.order
 Module.symvers
 .*.cmd
 *.cmd
+onboard
