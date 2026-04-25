@@ -145,12 +145,27 @@
 		pinctrl-0 = <&csi_pe_pins>;
 		status = "okay";
 
+		/* Run CSI in RAW passthrough mode: sun4i-csi will expose a
+		 * single-plane VIDEO_CAPTURE device (YUYV / UYVY) instead of
+		 * the default multi-plane YUV420M.  Needed because the
+		 * YUV422->YUV420 planar conversion hardware on suniv is
+		 * broken (captures ~1/4 of bytes per row). */
+		packed-format;
+
 		port {
 			csi_in: endpoint {
 				remote-endpoint = <&ov2640_out>;
 				bus-width = <8>;
-				hsync-active = <1>;
-				vsync-active = <1>;
+				/* hsync-active=<0> and vsync-active=<0> here
+				 * become HREF_POL=1 / VREF_POL=1 in the CSI
+				 * hardware register (sun4i-csi inverts the
+				 * HSYNC/HREF polarity semantics — see the
+				 * comment in sun4i_dma.c around the CFG write).
+				 * That matches what our bare-metal csi-capture
+				 * tool uses, which was proven to work.
+				 * OV2640 drives HREF/VSYNC active-high. */
+				hsync-active = <0>;
+				vsync-active = <0>;
 				pclk-sample = <1>;
 			};
 		};
@@ -294,8 +309,10 @@
 			ov2640_out: endpoint {
 				remote-endpoint = <&csi_in>;
 				bus-width = <8>;
-				hsync-active = <1>;
-				vsync-active = <1>;
+				/* Must match csi_in polarity — V4L2 requires
+				 * endpoint pair to agree. */
+				hsync-active = <0>;
+				vsync-active = <0>;
 				pclk-sample = <1>;
 			};
 		};

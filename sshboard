@@ -1,3 +1,8 @@
 #!/bin/bash
-
-ssh root@192.168.100.1
+# Open an SSH session to the F1C200S board, using the project-local
+# speed-tuned config (tools/ssh-config).  Any extra args are passed to
+# ssh — for example:
+#     ./sshboard ls /                  # run a command and exit
+#     ./sshboard -L 8080:localhost:80  # port forward
+HERE=$(cd "$(dirname "$0")" && pwd)
+exec ssh -F "$HERE/tools/ssh-config" board "$@"

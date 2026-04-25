@@ -1,0 +1,32 @@
+# Speed-tuned SSH config for the F1C200S board.
+#
+# Used by tools/snap.sh, the sshboard wrapper, and anything else that
+# wants fast SSH to the board.  Invoke with:
+#
+#     ssh  -F tools/ssh-config board
+#     scp  -F tools/ssh-config local-file board:/path
+#
+# What's tuned:
+#   - ChaCha20-Poly1305 cipher: fastest symmetric algorithm on the ARM9
+#     (no AES hardware acceleration on F1C200S).
+#   - Curve25519 KEX: fastest elliptic-curve key exchange.
+#   - SHA-256 ETM MAC: modern, fast.
+#   - ControlMaster: subsequent connections within 10 minutes reuse the
+#     same TCP socket — no second handshake.  First call ~2 s,
+#     subsequent calls ~50 ms.
+#   - StrictHostKeyChecking off + /dev/null known_hosts: rebuilding the
+#     rootfs regenerates dropbear host keys, which would otherwise
+#     trigger MITM warnings every time.
+
+Host board
+    HostName 192.168.100.1
+    User root
+    Ciphers chacha20-poly1305@openssh.com
+    KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
+    MACs hmac-sha2-256-etm@openssh.com
+    ControlMaster auto
+    ControlPath /tmp/ssh-board-%r@%h:%p
+    ControlPersist 10m
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    LogLevel ERROR

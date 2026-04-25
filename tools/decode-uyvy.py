@@ -29,14 +29,21 @@ import os
 import sys
 
 
+def _byte_offsets(byte_order: str) -> tuple[int, int, int, int]:
+    """Return (y0_off, u_off, y1_off, v_off) for a 4-byte 2-pixel group."""
+    return {
+        "yuyv": (0, 1, 2, 3),  # Y0 U  Y1 V
+        "yvyu": (0, 3, 2, 1),  # Y0 V  Y1 U   (U/V swapped from yuyv)
+        "uyvy": (1, 0, 3, 2),  # U  Y0 V  Y1
+        "vyuy": (1, 2, 3, 0),  # V  Y0 U  Y1
+    }[byte_order]
+
+
 def y_plane(raw: bytes, byte_order: str) -> bytes:
     """Pick every other byte to extract the Y plane."""
-    if byte_order == "uyvy":
-        # U-Y-V-Y: Y is at odd offsets (1, 3, 5, ...)
-        return bytes(raw[i] for i in range(1, len(raw), 2))
-    else:  # "yuyv"
-        # Y-U-Y-V: Y is at even offsets (0, 2, 4, ...)
-        return bytes(raw[i] for i in range(0, len(raw), 2))
+    y0_off, _, _, _ = _byte_offsets(byte_order)
+    # Y0 and Y1 sit at offsets y0_off and y0_off + 2 within each 4-byte group
+    return bytes(raw[i] for i in range(y0_off, len(raw), 2))
 
 
 def stretch(y: bytes, low_pct: float = 0.02, high_pct: float = 0.98):
@@ -67,8 +74,37 @@ def stretch(y: bytes, low_pct: float = 0.02, high_pct: float = 0.98):
     return stretched, lo, hi
 
 
+def yuyv_to_rgb(raw: bytes, byte_order: str, width: int, height: int) -> bytes:
+    """Convert YUYV/UYVY/YVYU/VYUY byte stream to packed RGB888 (BT.601)."""
+    y0_off, u_off, y1_off, v_off = _byte_offsets(byte_order)
+
+    rgb = bytearray(width * height * 3)
+    rgb_idx = 0
+    # 4 input bytes -> 2 pixels -> 6 output bytes
+    for i in range(0, len(raw), 4):
+        Y0 = raw[i + y0_off]
+        Y1 = raw[i + y1_off]
+        u  = raw[i + u_off] - 128
+        v  = raw[i + v_off] - 128
+
+        # BT.601 limited-range Y'CbCr -> R'G'B' (rounded to int math)
+        cr_r = (359 * v) >> 8           # ≈ 1.402 * v
+        cr_g = (88  * u + 183 * v) >> 8 # ≈ 0.344*u + 0.714*v
+        cr_b = (454 * u) >> 8           # ≈ 1.772 * u
+
+        for Y in (Y0, Y1):
+            r = Y + cr_r
+            g = Y - cr_g
+            b = Y + cr_b
+            rgb[rgb_idx]     = 0 if r < 0 else (255 if r > 255 else r)
+            rgb[rgb_idx + 1] = 0 if g < 0 else (255 if g > 255 else g)
+            rgb[rgb_idx + 2] = 0 if b < 0 else (255 if b > 255 else b)
+            rgb_idx += 3
+    return bytes(rgb)
+
+
 def decode_one(path: str, width: int, height: int, byte_order: str,
-               do_stretch: bool, out_dir: str | None) -> None:
+               do_stretch: bool, color: bool, out_dir: str | None) -> None:
     expected = width * height * 2
     with open(path, "rb") as f:
         raw = f.read()
@@ -83,10 +119,23 @@ def decode_one(path: str, width: int, height: int, byte_order: str,
         raw = raw[:expected]
 
     y = y_plane(raw, byte_order)
-    assert len(y) == width * height, f"{len(y)} != {width*height}"
-
     ymin, ymax = min(y), max(y)
     yavg = sum(y) / len(y)
+
+    base = os.path.basename(path)
+    name, _ = os.path.splitext(base)
+
+    if color:
+        out_name = f"{name}.ppm"
+        out_path = os.path.join(out_dir, out_name) if out_dir else \
+                   os.path.join(os.path.dirname(path) or ".", out_name)
+        rgb = yuyv_to_rgb(raw, byte_order, width, height)
+        with open(out_path, "wb") as f:
+            f.write(f"P6\n{width} {height}\n255\n".encode())
+            f.write(rgb)
+        print(f"{base}: Y {ymin:3d}..{ymax:3d} avg {yavg:5.1f}  "
+              f"→  {out_path} (color PPM)")
+        return
 
     if do_stretch:
         out_y, p_lo, p_hi = stretch(y)
@@ -95,8 +144,6 @@ def decode_one(path: str, width: int, height: int, byte_order: str,
         out_y = y
         stretch_info = ""
 
-    base = os.path.basename(path)
-    name, _ = os.path.splitext(base)
     out_name = f"{name}.pgm"
     out_path = os.path.join(out_dir, out_name) if out_dir else \
                os.path.join(os.path.dirname(path) or ".", out_name)
@@ -128,13 +175,23 @@ def main() -> int:
     ap.add_argument("--size", type=parse_size, default=(640, 480),
                     help="frame size (default 640x480)")
     order = ap.add_mutually_exclusive_group()
-    order.add_argument("--uyvy", dest="order", action="store_const",
-                       const="uyvy", help="byte order UYVY (default)")
     order.add_argument("--yuyv", dest="order", action="store_const",
-                       const="yuyv", help="byte order YUYV")
-    ap.set_defaults(order="uyvy")
+                       const="yuyv", help="byte order Y U Y V (default)")
+    order.add_argument("--yvyu", dest="order", action="store_const",
+                       const="yvyu", help="byte order Y V Y U "
+                       "(YUYV with U/V swapped — try this if colours "
+                       "look magenta/purple with --yuyv)")
+    order.add_argument("--uyvy", dest="order", action="store_const",
+                       const="uyvy", help="byte order U Y V Y")
+    order.add_argument("--vyuy", dest="order", action="store_const",
+                       const="vyuy", help="byte order V Y U Y")
+    ap.set_defaults(order="yuyv")
     ap.add_argument("--no-stretch", dest="stretch", action="store_false",
-                    help="disable contrast stretching")
+                    help="disable contrast stretching (grayscale only)")
+    ap.add_argument("--color", action="store_true",
+                    help="output color PPM (BT.601 YUV→RGB) instead of "
+                         "grayscale PGM. Note: color mode skips contrast "
+                         "stretch — Y values map straight to the RGB output.")
     args = ap.parse_args()
 
     w, h = args.size
@@ -142,7 +199,8 @@ def main() -> int:
         os.makedirs(args.out_dir, exist_ok=True)
 
     for path in args.files:
-        decode_one(path, w, h, args.order, args.stretch, args.out_dir)
+        decode_one(path, w, h, args.order, args.stretch, args.color,
+                   args.out_dir)
 
     return 0
 

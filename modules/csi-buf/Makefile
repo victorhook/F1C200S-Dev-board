@@ -2,7 +2,8 @@ TOPDIR        := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../..)
 KDIR          ?= $(TOPDIR)/buildroot/output/build/linux-6.19.11
 ARCH          ?= arm
 CROSS_COMPILE ?= $(TOPDIR)/buildroot/output/host/bin/arm-buildroot-linux-musleabi-
-BOARD         ?= root@192.168.100.1
+BOARD         ?= board       # alias in tools/ssh-config
+SSH_CONF      := $(TOPDIR)/tools/ssh-config
 
 obj-m += csi-buf.o
 
@@ -15,4 +16,4 @@ clean:
 	$(MAKE) -C $(KDIR) M=$(CURDIR) clean
 
 deploy: all
-	scp -O csi-buf.ko $(BOARD):/root/
+	scp -F $(SSH_CONF) -O csi-buf.ko $(BOARD):/root/
